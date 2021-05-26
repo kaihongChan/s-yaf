@@ -1,0 +1,32 @@
+FROM php:7.2-fpm
+
+# 更新为中科大源
+COPY source.list /etc/apt/sources.list
+RUN apt-get update
+
+# redis 扩展
+RUN pecl install redis-5.0.0 \
+&& docker-php-ext-enable redis
+
+# opcache 扩展
+RUN docker-php-ext-configure opcache --enable-opcache \
+&& docker-php-ext-install opcache
+
+# xdebug 扩展
+#RUN pecl install xdebug-2.7.2 && docker-php-ext-enable xdebug
+
+# swoole 扩展
+RUN pecl install swoole-4.6.7 \
+&& docker-php-ext-enable swoole
+
+# yaf 扩展
+RUN pecl install yaf-3.1.4 \
+&& docker-php-ext-enable yaf
+
+COPY . /var/www
+
+WORKDIR /var/www
+
+EXPOSE 9501
+
+#CMD [ 'php', 'server/server.php' ]
