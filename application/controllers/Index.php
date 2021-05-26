@@ -5,7 +5,7 @@ class IndexController extends BaseController
 {
 	public function indexAction()
 	{
-		var_dump(Yaf_Registry::get('REQUEST_HEADER'));
+		var_dump(Yaf_Registry::get('REQUEST_HEADER')['token']);
 		echo json_encode([
 			'code' => 200,
 			'status' => true,
