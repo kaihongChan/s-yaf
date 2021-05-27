@@ -20,7 +20,7 @@ class Bootstrap extends Yaf_Bootstrap_Abstract
 	 */
 	public function _initPlugin(Yaf_Dispatcher $dispatcher)
 	{
-
+        $dispatcher->registerPlugin(new AuthPlugin());
 	}
 
 	/**
@@ -40,6 +40,11 @@ class Bootstrap extends Yaf_Bootstrap_Abstract
 //			'Base',
 //		);
 //		Yaf_Loader::getInstance()->registerLocalNamespace($namespace);
+	}
+
+    public function _initHeader(Yaf_Dispatcher $dispatcher)
+    {
+
 	}
 
 }

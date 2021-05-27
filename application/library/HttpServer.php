@@ -6,10 +6,22 @@ class HttpServer
 	protected $defaultHost = '0.0.0.0';
 	protected $defaultPort = '9501';
 	protected $serverConfig = [];
-	protected $httpServer = null;
+    protected $appConfigFile = '';
+
+    /**
+     * @var swoole_http_server
+     */
+	public $httpServer = null;
+
+    /**
+     * @var Yaf_Application
+     */
 	protected $application = null;
+
+    /**
+     * @var HttpServer
+     */
 	protected static $instance = null;
-	protected $appConfigFile = [];
 
 	public static function getInstance(): ?HttpServer
 	{
@@ -53,7 +65,7 @@ class HttpServer
 	}
 
 	/**
-	 *
+	 * 服务启动
 	 */
 	public function start()
 	{
@@ -96,19 +108,20 @@ class HttpServer
 
 	/**
 	 * @param swoole_http_server $serverObj
-	 * @param $workerId
+	 * @param int $workerId
 	 * @return bool
 	 * @throws Yaf_Exception_StartupError
 	 * @throws Yaf_Exception_TypeError
 	 */
-	public function onWorkerStart(swoole_http_server $serverObj, $workerId): bool
+	public function onWorkerStart(swoole_http_server $serverObj, int $workerId): bool
 	{
-		//rename
+		// rename
 		$processName = sprintf($this->serverConfig['server']['event_worker_process_name'], $workerId);
 		swoole_set_process_name($processName);
 
-		//实例化yaf
+		// 实例化yaf
 		$this->application = new Yaf_Application($this->appConfigFile);
+		$this->application->bootstrap();
 
 		return true;
 	}
@@ -120,27 +133,31 @@ class HttpServer
 
 	public function onRequest(swoole_http_request $request, swoole_http_response $response)
 	{
-		//注册全局信息
-		$this->initRequestParam($request);
-		Yaf_Registry::set('SWOOLE_HTTP_REQUEST', $request);
-		Yaf_Registry::set('SWOOLE_HTTP_RESPONSE', $response);
+	    // 兼容chrome浏览器
+        if ($request->server['path_info'] == '/favicon.ico' || $request->server['request_uri'] == '/favicon.ico') {
+            $response->end();
+            return;
+        }
 
-		//执行
+		// 注册全局信息
+		$this->initRequestParam($request);
+        $response->header('Content-Type', 'application/json');
+		// 执行
 		ob_start();
 		try {
-			$requestObj = new Yaf_Request_Http($request->server['request_uri'], '');
+			$requestObj = new Yaf_Request_Http($request->server['request_uri'], '/');
 
 			$configArr = Yaf_Application::app()->getConfig()->toArray();
 			if (!empty($configArr['application']['baseUri'])) { //set base_uri
 				$requestObj->setBaseUri($configArr['application']['baseUri']);
 			}
 
-			$this->application->bootstrap()->getDispatcher()->dispatch($requestObj);
+			$this->application->getDispatcher()->dispatch($requestObj);
 		} catch (Yaf_Exception $e) {
-			var_dump($e);
+			var_dump($e->getMessage());
 		}
 
-		$result = ob_get_contents();
+        $result = ob_get_contents();
 		ob_end_clean();
 
 		$response->end($result);
@@ -148,17 +165,17 @@ class HttpServer
 
 	/**
 	 * @param swoole_http_request $request
-	 * @return bool
-	 */
-	private function initRequestParam(swoole_http_request $request): bool
-	{
+	 * @return void
+     */
+	private function initRequestParam(swoole_http_request $request): void
+    {
 		// 将请求的一些环境参数放入全局变量桶中
-		$server = isset($request->server) ? $request->server : [];
-		$header = isset($request->header) ? $request->header : [];
-		$get = isset($request->get) ? $request->get : [];
-		$post = isset($request->post) ? $request->post : [];
-		$cookie = isset($request->cookie) ? $request->cookie : [];
-		$files = isset($request->files) ? $request->files : [];
+		$server = $request->server ?? [];
+		$header = $request->header ?? [];
+		$get = $request->get ?? [];
+		$post = $request->post ?? [];
+		$cookie = $request->cookie ?? [];
+		$files = $request->files ?? [];
 
 		Yaf_Registry::set('REQUEST_SERVER', $server);
 		Yaf_Registry::set('REQUEST_HEADER', $header);
@@ -168,6 +185,5 @@ class HttpServer
 		Yaf_Registry::set('REQUEST_FILES', $files);
 		Yaf_Registry::set('REQUEST_RAW_CONTENT', $request->rawContent());
 
-		return true;
-	}
+    }
 }

@@ -1,4 +1,4 @@
-FROM php:7.2-fpm
+FROM php:7.4-fpm
 
 # 更新为中科大源
 COPY source.list /etc/apt/sources.list
@@ -27,6 +27,6 @@ COPY . /var/www
 
 WORKDIR /var/www
 
-EXPOSE 9501
+EXPOSE 10501
 
 #CMD [ 'php', 'server/server.php' ]
