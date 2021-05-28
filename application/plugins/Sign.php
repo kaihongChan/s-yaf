@@ -1,10 +1,10 @@
 <?php
 
-class AuthPlugin extends Yaf_Plugin_Abstract
+class SignPlugin extends Yaf_Plugin_Abstract
 {
     public function routerStartup(Yaf_Request_Abstract $request, Yaf_Response_Abstract $response) {
         /* 在路由之前执行,这个钩子里，你可以做url重写等功能 */
-
+//        var_dump(Yaf_Registry::get('REQUEST_HEADER'));
     }
     public function routerShutdown(Yaf_Request_Abstract $request, Yaf_Response_Abstract $response) {
         /* 路由完成后，在这个钩子里，你可以做登陆检测等功能*/
