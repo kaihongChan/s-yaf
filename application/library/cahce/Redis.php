@@ -1,6 +1,6 @@
 <?php
 
-namespace cache;
+namespace Application\Library\Cache;
 
 final class Redis
 {

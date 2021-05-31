@@ -204,23 +204,23 @@ class HttpServer
 			return;
 		}
 
-		// 注册全局信息
-		$this->initRequestParam($request);
-
 		// 执行
 		ob_start();
 		try {
-			$requestObj = new Yaf_Request_Http($request->server['request_uri'], '');
-
-			$configArr = Yaf_Application::app()->getConfig()->toArray();
-			if (!empty($configArr['application']['baseUri'])) { // set base_uri
-				$requestObj->setBaseUri($configArr['application']['baseUri']);
-			}
+			$configArr = Yaf_Registry::get('config');
+			$baseUri = $configArr['application']['baseUri'] ?? null;
+			$requestObj = new YafRequestHttp($request->server['request_uri'], $baseUri);
+			$requestObj->setServer($request->server);
+			$requestObj->setGet($request->get);
+			$requestObj->setPost($request->post);
+			$requestObj->setFiles($request->files);
+			$requestObj->setRawContent($request->rawContent());
 
 			$this->application->getDispatcher()->dispatch($requestObj);
 
-		} catch (Throwable $e) {
-			$this->throwableHandle($e);
+		} catch (Yaf_Exception $e) {
+			$this->httpStatus = $e->getCode();
+			var_dump($e->getMessage());
 		}
 
 		$result = ob_get_contents();
@@ -232,65 +232,5 @@ class HttpServer
 		$response->header('Content-Type', 'application/json; charset=utf-8');
 
 		$response->end($result);
-	}
-
-	/**
-	 * 注册请求环境参数
-	 * @param swoole_http_request $request
-	 * @return void
-	 */
-	private function initRequestParam(swoole_http_request $request): void
-	{
-		// 将请求的一些环境参数放入全局变量桶中
-		$server = $request->server ?? [];
-		$header = $request->header ?? [];
-		$get = $request->get ?? [];
-		$post = $request->post ?? [];
-		$cookie = $request->cookie ?? [];
-		$files = $request->files ?? [];
-
-		Yaf_Registry::set('REQUEST_SERVER', $server);
-		Yaf_Registry::set('REQUEST_HEADER', $header);
-		Yaf_Registry::set('REQUEST_GET', $get);
-		Yaf_Registry::set('REQUEST_POST', $post);
-		Yaf_Registry::set('REQUEST_COOKIE', $cookie);
-		Yaf_Registry::set('REQUEST_FILES', $files);
-		Yaf_Registry::set('REQUEST_RAW_CONTENT', $request->rawContent());
-
-	}
-
-	/**
-	 * 异常处理
-	 * @param Throwable $e
-	 */
-	private function throwableHandle(Throwable $e)
-	{
-		$exceptionCode = $e->getCode();
-		switch ($exceptionCode) {
-			case YAF_ERR_NOTFOUND_MODULE:
-			case YAF_ERR_NOTFOUND_CONTROLLER:
-			case YAF_ERR_NOTFOUND_ACTION:
-			case YAF_ERR_NOTFOUND_VIEW:
-				$this->httpStatus = 404;
-				break;
-			// TODO 其他异常。。。
-			default:
-				$this->httpStatus = 500;
-				break;
-		}
-
-		$appConfig = $this->application->getConfig()->toArray();
-		if (isset($appConfig['application']['environment']) && $appConfig['application']['environment'] == 'development') {
-			$msg = $e->getMessage() . '; Trace: ' . $e->getTraceAsString();
-		} else {
-			$msg = self::HTTP_STATUS[$this->httpStatus];
-		}
-
-		echo json_encode([
-			'code' => $this->httpStatus,
-			'msg' => $msg,
-			'status' => false,
-			'data' => null,
-		]);
 	}
 }
